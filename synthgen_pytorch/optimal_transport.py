@@ -6,4 +6,7 @@ import numpy as np
 import ot as pot
 import torch
 
-pass
+class OTPlanSampler:
+  """sample paths with different optimal transport plans"""
+  def __init__(self):
+    pass
