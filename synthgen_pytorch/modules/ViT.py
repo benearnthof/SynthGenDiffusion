@@ -23,7 +23,7 @@ from einops.layers.torch import Rearrange
 
 from vector_quantize_pytorch import VectorQuantize
 
-from synthgen_pytorch.models.attention import Attention, Transformer, ContinuousPositionBias
+from synthgen_pytorch.modules.attention import Attention, Transformer, ContinuousPositionBias
 
 
 def exists(val):
@@ -227,7 +227,7 @@ class Discriminator(nn.Module):
         return self.to_logits(x)
 
 # 3d ViViT with factorized spatial and temporal attention made into an vqgan-vae autoencoder
-class CTViT(nn.Module):
+class ViT(nn.Module):
     def __init__(
         self,
         *,

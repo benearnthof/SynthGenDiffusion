@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 from torchvision.datasets import CelebA
 from torchvision.transforms import ToTensor, Resize, Compose, CenterCrop, Normalize
 
-
+# TODO: Write proper config
 cfg = Path("/dss/dssmcmlfs01/pr74ze/pr74ze-dss-0001/ru25jan4/SynthGenDiffusion/secrets.yaml")
 config = OmegaConf.load(cfg)
 
