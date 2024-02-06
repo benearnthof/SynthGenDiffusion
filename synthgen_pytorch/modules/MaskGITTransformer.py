@@ -422,7 +422,7 @@ class MaskGITTransformer(nn.Module):
             if is_image:
                 video = rearrange(video, 'b c h w -> b c 1 h w')
             # append a batch of dummy data to the tensor so we have batch size 2 and the line after this works
-            dummy = torch.ones(video.shape)
+            dummy = torch.ones(video.shape) # TODO: add test that verifies that this does not change with encoding
             video = torch.concatenate((video, dummy), 0)
             first_frame, rest_frames = video[:, :, :1].cuda(), video[:, :, 1:].cuda()
             # derive patches
@@ -445,7 +445,7 @@ class MaskGITTransformer(nn.Module):
             tokens = rearrange(tokens, 'b (t h w) d -> b t h w d', h = h, w = w)
             # get rid of dummy dimension
             vid_tokens = tokens[0]
-            return tokens
+            return vid_tokens.unsqueeze(0) # readd batch dimension for reshaping
 
         # texts need to be of batch dimension 2, if we can only train on batch dim 1 then we need to append dummy tensor
         encoded = encode_mri_batch(video=texts, mrivit=t5)
@@ -455,7 +455,7 @@ class MaskGITTransformer(nn.Module):
         # now reshape to t5 output shape of 3*768
         bs, n_tokens = downsampled.shape[0], downsampled.shape[1]
         encoded_text = torch.reshape(downsampled, (bs, n_tokens, 3, 768))
-        return encoded_text
+        return encoded_text.squeeze(0) # finally get rid of batch dimension to match the shape of t5 outputs
 
 
     def sample_images(
