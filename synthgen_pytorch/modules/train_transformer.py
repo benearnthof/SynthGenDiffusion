@@ -248,9 +248,9 @@ class TransformerTrainer(nn.Module):
         # here mri and ct will be loaded, with mask corresponding to ct shapes
         # video, text = next(self.dl_iter) # text is now equal to mri image
         text, video = next(self.dl_iter)
-        print(video.shape)
+        print(text.shape), print(video.shape)
         device=self.device
-        video=video.to(device)
+        video = video.to(device)
         mask = torch.ones((video.shape[0], video.shape[2])).bool().to(device)
         text = text.to(device)
         #text = list(text)
