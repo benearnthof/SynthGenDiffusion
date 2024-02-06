@@ -401,6 +401,7 @@ class MaskGITTransformer(nn.Module):
         """
         Wrapper that takes a batch of mri tensors and transforms them into tokens that match the t5 output in dimension
         'texts' is here kept as variable name for the mri image input for consistency.
+        Texts must be of batch size 1!
         """
         # t5 name kept from encode text function, pretrained model is passed into transformer trainer class
         # we only need to push the model to the GPU
@@ -420,6 +421,9 @@ class MaskGITTransformer(nn.Module):
             is_image = video.ndim == 4
             if is_image:
                 video = rearrange(video, 'b c h w -> b c 1 h w')
+            # append a batch of dummy data to the tensor so we have batch size 2 and the line after this works
+            dummy = torch.ones(video.shape)
+            video = torch.concatenate((video, dummy), 0)
             first_frame, rest_frames = video[:, :, :1].cuda(), video[:, :, 1:].cuda()
             # derive patches
             with torch.no_grad():
@@ -439,6 +443,8 @@ class MaskGITTransformer(nn.Module):
             with torch.no_grad():
                 tokens, indices, commit_loss = mrivit.vq(tokens, mask = None)
             tokens = rearrange(tokens, 'b (t h w) d -> b t h w d', h = h, w = w)
+            # get rid of dummy dimension
+            vid_tokens = tokens[0]
             return tokens
 
         # texts need to be of batch dimension 2, if we can only train on batch dim 1 then we need to append dummy tensor
@@ -668,14 +674,24 @@ class MaskGITTransformer(nn.Module):
         cond_drop_prob = 0
         
         
-        # TODO: same as in self.sample
+        # same as in self.sample
         if not self.unconditional:
-            # TODO: mri embeds
+            # Case for mri embeds: If MRI video is passed in as Tensor then we encode_video, same shape as encode text
             if not exists(text_embeds):
-                with torch.no_grad():
-                    text_embeds = self.encode_texts(texts, output_device = video_codebook_ids.device)
+                if isinstance(texts, str):
+                    texts = [texts]
+                    with torch.no_grad():
+                        text_embeds = self.encode_texts(texts, output_device = video_codebook_ids.device)
+                elif isinstance(texts, List):
+                    with torch.no_grad():
+                        text_embeds = self.encode_texts(texts, output_device = device)
+                elif isinstance(texts, Tensor):
+                    with torch.no_grad():
+                        text_embeds = self.encode_video(texts, output_device = device)
             # TODO: mri mask
             text_mask = torch.any(text_embeds != 0, dim = -1) # save the researcher from having to think about mask, by assuming if all of the feature dimension is 0, it is masked out
+
+            batch_size = len(texts)
 
             # condition dropout for Katherine's (@crowsonkb) version of classifier free guidance for transformers
 
@@ -715,8 +731,8 @@ class MaskGITTransformer(nn.Module):
                 masked_input,
                 video_mask = video_mask,
                 cond_drop_prob = cond_drop_prob,
-                text_mask = text_mask, # TODO: video mask
-                context = text_embeds
+                text_mask = text_mask, # video mask same shape as text mask
+                context = text_embeds # text embeds same shape as video embeds
             )
 
         if not only_train_critic:
@@ -744,8 +760,8 @@ class MaskGITTransformer(nn.Module):
             critic_input,
             video_mask = video_mask,
             cond_drop_prob = cond_drop_prob,
-            text_mask = text_mask, # TODO: mri mask
-            context = text_embeds
+            text_mask = text_mask, # text mask same shape as video mask
+            context = text_embeds # text embeds same shape as video embeds
         )
 
         critic_labels = (video_codebook_ids != pred_video_ids).float()
@@ -766,13 +782,13 @@ class MaskGITTransformer(nn.Module):
 # make video function
 
 @beartype
-def make_video(
+def make_video( # TODO: should be adjusted for video batch size since the loop unpacks tensors which breaks sampling but is not used anymore 
     maskgittransformer: MaskGITTransformer,
-    texts: List[str], # TODO: mri image
+    texts: Union[List[str], str, Tensor], # added tensor for video compatibility
     num_frames,
     prime_lengths
 ):
-    num_scenes = len(texts) # TODO: mri image
+    num_scenes = len(texts) # works with batch size
     num_frames = cast_tuple(num_frames, num_scenes)
 
     prime_lengths = cast_tuple(prime_lengths, num_scenes - 1)
