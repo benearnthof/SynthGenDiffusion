@@ -24,14 +24,14 @@ def cast_num_frames(t, *, frames):
 
 #### MRI & CT coupled dataset for conditional upsampling
 class MRICTDatasetSuperres(Dataset):
-    def __init__(min_slices=20, resize_dim=512, num_frames=2, force_num_frames=True
+    def __init__(
         self,
         ct_folder="/dss/dssmcmlfs01/pr74ze/pr74ze-dss-0001/ru25jan4/data/CT_RAW",
         mri_folder="/dss/dssmcmlfs01/pr74ze/pr74ze-dss-0001/ru25jan4/data/TASK1_ONLY_SYNTHRAD",
         min_slices=20,
         image_size = 128,
-        ct_image_size = 256
-        resize_dim=256
+        ct_image_size = 256,
+        resize_dim=256,
         channels = 1,
         num_frames = 2,
         horizontal_flip = False,
@@ -148,9 +148,9 @@ class MRICTDatasetSuperres(Dataset):
 
     def get_lowres_image(self, t):
         """Quick wrapper to downsample tensor"""
-    	tensor= F.interpolate(t, size = (128, 128, 128), mode="trilinear", align_corners=False)
-    	tensor = tensor.squeeze(1)
-    	return tensor.float()
+        tensor= F.interpolate(t, size = (128, 128, 128), mode="trilinear", align_corners=False)
+        tensor = tensor.squeeze(1)
+        return tensor.float()
 
     def __getitem__(self, index):
         paths = self.image_pairs[index]
