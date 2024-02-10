@@ -148,11 +148,11 @@ class MRICTDatasetSuperres(Dataset):
     def get_lowres_image(self, t):
         """Quick wrapper to downsample tensor"""
         tensor = t.unsqueeze(0)
-        print(f"Shape of hi res tensor:{tensor.shape}")
+        #print(f"Shape of hi res tensor:{tensor.shape}")
         tensor = F.interpolate(tensor, size = (131, 128, 128), mode="trilinear", align_corners=False)
-        print(f"Shape of lo res tensor:{tensor.shape}")
+        #print(f"Shape of lo res tensor:{tensor.shape}")
         tensor = tensor.squeeze(1)
-        print(f"Shape of sqeeze tensor:{tensor.shape}")
+        #print(f"Shape of sqeeze tensor:{tensor.shape}")
         return tensor.float()
 
     def __getitem__(self, index):
