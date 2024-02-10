@@ -10,6 +10,7 @@ from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 from functools import partial
 import torch.nn.functional as F
+from pathlib import Path
 
 
 def cast_num_frames(t, *, frames):
@@ -76,10 +77,8 @@ class MRICTDatasetSuperres(Dataset):
         
 
         # functions to transform video path to tensor
-        self.gif_to_tensor = partial(gif_to_tensor, channels = self.channels, transform = self.ct_transform)
-        self.mp4_to_tensor = partial(video_to_tensor, crop_size = self.image_size)
         self.nii_to_tensor = partial(self.nii_img_to_tensor, transform = self.ct_transform)
-        self.lowres_to_tensor=partial(self.get_lowres_image, transform=self.transform2)
+        self.lowres_to_tensor=partial(self.get_lowres_image, transform=self.image_transform2)
         self.cast_num_frames_fn = partial(cast_num_frames, frames = num_frames) if force_num_frames else identity
 
 
@@ -140,7 +139,7 @@ class MRICTDatasetSuperres(Dataset):
         mri_tensor = mri_tensor.unsqueeze(0).unsqueeze(0)
         # now scale to target shape
         # original CT images are sometimes a bit bigger than 256 resolution
-        ct_tensor = F.interpolate(ct_tensor, size=(256, 256, 256), mode='trilinear',align_corners=False)
+        ct_tensor = F.interpolate(ct_tensor, size=(131, 256, 256), mode='trilinear',align_corners=False)
         ct_tensor = ct_tensor.squeeze(1)
         mri_tensor = F.interpolate(mri_tensor, size=(131, 128, 128), mode='trilinear',align_corners=False)
         mri_tensor = mri_tensor.squeeze(1)
@@ -148,18 +147,18 @@ class MRICTDatasetSuperres(Dataset):
 
     def get_lowres_image(self, t):
         """Quick wrapper to downsample tensor"""
-        tensor= F.interpolate(t, size = (128, 128, 128), mode="trilinear", align_corners=False)
+        tensor = t.unsqueeze(0)
+        print(f"Shape of hi res tensor:{tensor.shape}")
+        tensor = F.interpolate(tensor, size = (131, 128, 128), mode="trilinear", align_corners=False)
+        print(f"Shape of lo res tensor:{tensor.shape}")
         tensor = tensor.squeeze(1)
+        print(f"Shape of sqeeze tensor:{tensor.shape}")
         return tensor.float()
 
     def __getitem__(self, index):
         paths = self.image_pairs[index]
         ext = paths[0].suffix
-        if ext == '.gif':
-            tensor = self.gif_to_tensor(path)
-        elif ext == '.mp4':
-            tensor = self.mp4_to_tensor(str(path))
-        elif ext == '.gz':
+        if ext == '.gz':
             mri_tensor, ct_tensor = self.nii_to_tensor(paths)
         elif ext == '.nii': # this one is relevant
             mri_tensor, ct_tensor = self.nii_to_tensor(paths)
